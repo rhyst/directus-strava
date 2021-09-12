@@ -1,0 +1,49 @@
+<html>
+  <head>
+    <style>
+      * {
+        font-family: sans-serif;
+      }
+      .green {
+        color: green;
+      }
+      .button {
+        padding: 4px;
+        font-size: 13px;
+        border-radius: 2px;
+        text-decoration: none;
+        background-color: #efefef;
+        border: 1px solid rgb(118, 118, 118);
+        cursor: pointer;
+        color: black;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🚶‍♂️ Strava Directus 🚴‍♀️</h1>
+    <h2>Status</h2>
+    <p>Authenticated {% if token %}
+        <span class="green">✔</span>
+      {% else %}❌{% endif %} - <a class="button" href="{{ oauthUrl }}">
+        {% if token %}Rea{% else %}A{% endif %}uthenticate</a>
+    </p>
+    {% if token %}
+      <p>Subscribed {% if subscriptionId %}
+          <span class="green">✔</span>
+        {% else %}❌{% endif %} - 
+      {% if subscriptionId %}
+          <a  class="button" href="/custom/strava/subscription/delete?id={{subscriptionId}}">Unsubscribe</a>
+        {% else %}
+          <a  class="button" href="/custom/strava/subscription/create">Subscribe</a>
+        {% endif %}
+      </p>
+    {% endif %}
+    {% if token %}
+      <h2>Activities</h2>
+      <p>
+        <a href="/custom/strava/list">View recent activities</a>
+      </p>
+    {% endif %}
+  </div>
+</body>
+</html>
