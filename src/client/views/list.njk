@@ -1,0 +1,31 @@
+<html>
+    <head>
+        <style>
+            * {
+                font-family: sans-serif;
+            }
+            .green {
+                color: green;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>🚶‍♂️ Strava Directus 🚴‍♀️</h1>
+        <p>
+            <a href=".">Home</a>
+        </p>
+        <h2>Activities</h2>
+        {% for activity in activities %}
+            <p>{{ activity.start_date }}
+                <a href="/custom/strava/view/{{ activity.id }}">{{activity.name}}</a>
+                <a href="/custom/strava/fetch/{{ activity.id }}">Fetch</a>
+                {% if activity.id === updated %}
+                    <span class="green">✔️</span>{% endif %}
+            </div>
+        {% else %}
+            <p>No activities</p>
+        {% endfor %}
+</ul>
+</div>
+</body>
+</html>
