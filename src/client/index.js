@@ -37,7 +37,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
     // Check token
     const time = Math.round(Date.now() / 1000);
     if (token.expires_at - time <= 3600) {
-      const token = await got
+      token = await got
         .get(`${config.auth_proxy_url}/refresh`, {
           searchParams: { refresh_token: token.refresh_token },
         })
@@ -136,7 +136,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
     const activities = await got(`https://www.strava.com/api/v3/activities`, {
       headers: { Authorization: `Bearer ${token.access_token}` },
     }).json();
-    const updated = req.query.updated;
+    const updated = req.query.updated ? Number(req.query.updated) : null;
     const html = nunjucks.renderString(listTemplate, { activities, updated });
     return res.send(html);
   });
