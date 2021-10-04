@@ -1,5 +1,7 @@
 <html>
   <head>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Ctext%20x='0'%20y='14'%3E🚵‍♂️%3C/text%3E%3C/svg%3E" type="image/svg+xml"/>
+    <title>Directus Strava Extension</title>
     <style>
       * {
         font-family: sans-serif;
@@ -20,7 +22,7 @@
     </style>
   </head>
   <body>
-    <h1>🚶‍♂️ Strava Directus 🚴‍♀️</h1>
+    <h1>🚶‍♂️ Directus Strava Extension 🚴‍♀️</h1>
     <h2>Status</h2>
     <p>Authenticated {% if token %}
         <span class="green">✔</span>
@@ -32,16 +34,16 @@
           <span class="green">✔</span>
         {% else %}❌{% endif %} - 
       {% if subscriptionId %}
-          <a  class="button" href="/custom/strava/subscription/delete?id={{subscriptionId}}">Unsubscribe</a>
+          <a  class="button" href="{{ extensionUrl }}/subscription/delete?id={{subscriptionId}}">Unsubscribe</a>
         {% else %}
-          <a  class="button" href="/custom/strava/subscription/create">Subscribe</a>
+          <a  class="button" href="{{ extensionUrl }}/subscription/create">Subscribe</a>
         {% endif %}
       </p>
     {% endif %}
     {% if token %}
       <h2>Activities</h2>
       <p>
-        <a href="/custom/strava/list">View recent activities</a>
+        <a href="{{ extensionUrl }}/list">View recent activities</a>
       </p>
     {% endif %}
   </div>

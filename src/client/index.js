@@ -9,9 +9,11 @@ import listTemplate from "./views/list.njk";
 
 const config = require("./config.js");
 
-const auth_redirect_url = `${config.directus_url}/custom/strava/auth`;
-const webhook_callback_url = `${config.directus_url}/custom/strava/webhook`;
-const oauthUrl = `https://www.strava.com/oauth/authorize?client_id=${config.auth_client_id}&response_type=code&redirect_uri=${auth_redirect_url}&approval_prompt=force&scope=activity:read_all`;
+const extensionUrl = `${config.directusUrl}/${config.extensionPath}`;
+const authUrl = `${extensionUrl}/auth`;
+const listUrl = `${extensionUrl}/list`;
+const webhookUrl = `${extensionUrl}/webhook-${config.webhookSecret}`;
+const oauthUrl = `https://www.strava.com/oauth/authorize?client_id=${config.authClientId}&response_type=code&redirect_uri=${authUrl}&approval_prompt=force&scope=activity:read_all`;
 
 // Make a request and return the response
 const request = async (options) => {
@@ -27,6 +29,46 @@ const request = async (options) => {
 export default function registerEndpoint(router, { services, getSchema }) {
   const { ItemsService, FilesService, AuthenticationService } = services;
 
+  // WEBHOOKS
+
+  // Respond to activity event
+  router.post(`/webhook-${config.webhookSecret}`, async (req, res) => {
+    res.status(200).send("EVENT_RECEIVED");
+    const body = req.body;
+    const type = body.aspect_type;
+    const objectType = body.object_type;
+    const ownerId = body.owner_id;
+    const activityId = body.object_id;
+    console.log("Strava activity received: " + type + " " + activityId);
+
+    if (
+      (type === "create" || type === "update") &&
+      objectType === "activity" &&
+      ownerId === config.athleteId
+    ) {
+      getActivity(req, activityId);
+    }
+  });
+
+  // Respond to webhook setup test
+  router.get(`/webhook-${config.webhookSecret}`, (req, res) => {
+    console.log("Webhook challenge recieved");
+    let mode = req.query["hub.mode"];
+    let token = req.query["hub.verify_token"];
+    let challenge = req.query["hub.challenge"];
+    if (mode && token) {
+      if (mode === "subscribe" && token === config.webhookVerifyToken) {
+        console.log("Responding OK to webhook challenge");
+        return res.json({ "hub.challenge": challenge });
+      } else {
+        return res.sendStatus(403);
+      }
+    }
+    return res.sendStatus(400);
+  });
+
+  // AUTH
+
   router.use(cookieParser());
 
   // Auth on Directus and Strava for each request
@@ -34,7 +76,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
     const schema = await getSchema();
     // First check we are authed on directus
     if (!req.cookies.directus_refresh_token) {
-      return res.redirect(config.directus_url + "/admin/login");
+      return res.redirect(config.directusUrl + "/admin/login");
     }
     const authService = new AuthenticationService({ schema });
     let auth;
@@ -46,7 +88,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
       });
     } catch (e) {
       console.log(e);
-      return res.redirect(config.directus_url + "/admin/login");
+      return res.redirect(config.directusUrl + "/admin/login");
     }
     // Check and refresh strava token
     if (!req.cookies.strava_token) {
@@ -59,7 +101,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
       const time = Math.round(Date.now() / 1000);
       if (token.expires_at - time <= 3600) {
         token = await got
-          .get(`${config.auth_proxy_url}/refresh`, {
+          .get(`${config.authProxyUrl}/refresh`, {
             searchParams: { refresh_token: token.refresh_token },
           })
           .json();
@@ -135,13 +177,14 @@ export default function registerEndpoint(router, { services, getSchema }) {
     let subscriptionId = null;
     if (token) {
       const response = await request({
-        url: `${config.auth_proxy_url}/subscription`,
+        url: `${config.authProxyUrl}/subscription`,
         method: "get",
       });
       subscriptionId = response?.[0]?.id;
     }
 
     const html = nunjucks.renderString(indexTemplate, {
+      extensionUrl,
       oauthUrl,
       token,
       subscriptionId,
@@ -158,7 +201,11 @@ export default function registerEndpoint(router, { services, getSchema }) {
       headers: { Authorization: `Bearer ${token.access_token}` },
     }).json();
     const updated = req.query.updated ? Number(req.query.updated) : null;
-    const html = nunjucks.renderString(listTemplate, { activities, updated });
+    const html = nunjucks.renderString(listTemplate, {
+      extensionUrl,
+      activities,
+      updated,
+    });
     return res.send(html);
   });
 
@@ -175,66 +222,31 @@ export default function registerEndpoint(router, { services, getSchema }) {
   // Trigger a fetch to directus db of one activity
   router.get("/fetch/:id", async (req, res) => {
     await getActivity(req, req.params.id);
-    return res.redirect(`/custom/strava/list?updated=${req.params.id}`);
-  });
-
-  // WEBHOOKS
-
-  // Respond to activity event
-  router.post("/webhook", async (req, res) => {
-    res.status(200).send("EVENT_RECEIVED");
-    const body = req.body;
-    const type = body.aspect_type;
-    const objectType = body.object_type;
-    const ownerId = body.owner_id;
-    const activityId = body.object_id;
-    console.log("Strava activity received: " + type + " " + activityId);
-
-    if (
-      (type === "create" || type === "update") &&
-      objectType === "activity" &&
-      ownerId === config.athlete_id
-    ) {
-      getActivity(req, activityId);
-    }
-  });
-
-  // Respond to webhook setup test
-  router.get("/webhook", (req, res) => {
-    let mode = req.query["hub.mode"];
-    let token = req.query["hub.verify_token"];
-    let challenge = req.query["hub.challenge"];
-    if (mode && token) {
-      if (mode === "subscribe" && token === config.verify_token) {
-        return res.json({ "hub.challenge": challenge });
-      } else {
-        return res.sendStatus(403);
-      }
-    }
-    return res.sendStatus(400);
+    return res.redirect(`${listUrl}?updated=${req.params.id}`);
   });
 
   // SUBSCRIPTION
 
   // Initialise subscription query
   router.get("/subscription/create", async (req, res) => {
-    return res.json(
+    console.log(
       await request({
-        url: `${config.auth_proxy_url}/subscription`,
+        url: `${config.authProxyUrl}/subscription`,
         method: "post",
         searchParams: {
-          callback_url: webhook_callback_url,
-          verify_token: config.verify_token,
+          callback_url: webhookUrl,
+          verify_token: config.webhookVerifyToken,
         },
       })
     );
+    res.redirect(extensionUrl);
   });
 
   // View subscription
   router.get("/subscription", async (req, res) => {
     return res.json(
       await request({
-        url: `${config.auth_proxy_url}/subscription`,
+        url: `${config.authProxyUrl}/subscription`,
         method: "get",
       })
     );
@@ -243,15 +255,16 @@ export default function registerEndpoint(router, { services, getSchema }) {
   // Delete subscription
   router.get("/subscription/delete", async (req, res) => {
     const id = req.query.id;
-    return res.json(
+    console.log(
       await request({
-        url: `${config.auth_proxy_url}/subscription`,
+        url: `${config.authProxyUrl}/subscription`,
         method: "delete",
         searchParams: {
           id,
         },
       })
     );
+    res.redirect(extensionUrl);
   });
 
   // Auth an athlete
@@ -261,7 +274,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
       return res.send(`<a href="${oauthUrl}">Click Here To Authenticate</a>`);
     }
     const response = await got
-      .get(`${config.auth_proxy_url}/auth`, {
+      .get(`${config.authProxyUrl}/auth`, {
         searchParams: {
           code,
         },
@@ -273,6 +286,6 @@ export default function registerEndpoint(router, { services, getSchema }) {
     }
     console.log("Athlete authed");
     setToken(req, res, response);
-    res.redirect("/custom/strava");
+    res.redirect(extensionUrl);
   });
 }

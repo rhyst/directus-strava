@@ -9,7 +9,7 @@ const tokenRe = /.*csrf-token.*content="(.*)"/;
 const config = require("./config.js");
 
 export default async (activityId) => {
-  if (!config.athlete_email || !config.athlete_password) {
+  if (!config.athleteEmail || !config.athletePassword) {
     return { gpx: null, notes: "" };
   }
 
@@ -27,8 +27,8 @@ export default async (activityId) => {
   });
 
   const form = new FormData();
-  form.append("email", config.athlete_email);
-  form.append("password", config.athlete_password);
+  form.append("email", config.athleteEmail);
+  form.append("password", config.athletePassword);
   form.append("remember_me", "on");
   form.append("utf-8", "✓");
   form.append("plan", "");
