@@ -1,5 +1,7 @@
 <html>
     <head>
+        <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Ctext%20x='0'%20y='14'%3E🚵‍♂️%3C/text%3E%3C/svg%3E" type="image/svg+xml"/>
+        <title>Directus Strava Extension - Activities</title>
         <style>
             * {
                 font-family: sans-serif;
@@ -10,15 +12,15 @@
         </style>
     </head>
     <body>
-        <h1>🚶‍♂️ Strava Directus 🚴‍♀️</h1>
+        <h1>🚶‍♂️ Directus Strava Extension 🚴‍♀️</h1>
         <p>
-            <a href=".">Home</a>
+            <a href="{{ extensionUrl }}">Home</a>
         </p>
         <h2>Activities</h2>
         {% for activity in activities %}
             <p>{{ activity.start_date }}
-                <a href="/custom/strava/view/{{ activity.id }}">{{activity.name}}</a>
-                <a href="/custom/strava/fetch/{{ activity.id }}">Fetch</a>
+                <a href="{{ extensionUrl }}/view/{{ activity.id }}">{{activity.name}}</a>
+                <a href="{{ extensionUrl }}/fetch/{{ activity.id }}">Fetch</a>
                 {% if activity.id === updated %}
                     <span class="green">✔️</span>{% endif %}
             </div>
