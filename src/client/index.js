@@ -2,6 +2,7 @@ import got from "got";
 import getFull from "./full";
 import { Readable } from "stream";
 import nunjucks from "nunjucks";
+import cookieParser from "cookie-parser";
 
 import indexTemplate from "./views/index.njk";
 import listTemplate from "./views/list.njk";
@@ -24,43 +25,64 @@ const request = async (options) => {
 };
 
 export default function registerEndpoint(router, { services, getSchema }) {
-  const { ItemsService, FilesService } = services;
+  const { ItemsService, FilesService, AuthenticationService } = services;
 
-  const getToken = async () => {
-    const schema = await getSchema();
-    const metaService = new ItemsService("meta", { schema });
-    const result = await metaService.readOne("strava_token", { fields: ["*"] });
-    let token = result.data;
-    if (!token) {
-      return null;
-    }
-    // Check token
-    const time = Math.round(Date.now() / 1000);
-    if (token.expires_at - time <= 3600) {
-      token = await got
-        .get(`${config.auth_proxy_url}/refresh`, {
-          searchParams: { refresh_token: token.refresh_token },
-        })
-        .json();
-      await setToken(token);
-    }
-    return token;
-  };
+  router.use(cookieParser());
 
-  const setToken = async (data) => {
+  // Auth on Directus and Strava for each request
+  router.use(async (req, res, next) => {
     const schema = await getSchema();
-    const metaService = new ItemsService("meta", { schema });
-    await metaService.upsertOne({ key: "strava_token", data });
-    if (data.athlete) {
-      await metaService.upsertOne({
-        key: "strava_athlete",
-        data: data.athlete,
+    // First check we are authed on directus
+    if (!req.cookies.directus_refresh_token) {
+      return res.redirect(config.directus_url + "/admin/login");
+    }
+    const authService = new AuthenticationService({ schema });
+    let auth;
+    try {
+      auth = await authService.refresh(req.cookies.directus_refresh_token);
+      res.cookie("directus_refresh_token", auth.refreshToken, {
+        maxAge: auth.expires,
+        httpOnly: true,
       });
+    } catch (e) {
+      console.log(e);
+      return res.redirect(config.directus_url + "/admin/login");
     }
-    return data;
+    // Check and refresh strava token
+    if (!req.cookies.strava_token) {
+      return next();
+    }
+    try {
+      let token = JSON.parse(
+        Buffer.from(req.cookies.strava_token, "base64").toString("utf-8")
+      );
+      const time = Math.round(Date.now() / 1000);
+      if (token.expires_at - time <= 3600) {
+        token = await got
+          .get(`${config.auth_proxy_url}/refresh`, {
+            searchParams: { refresh_token: token.refresh_token },
+          })
+          .json();
+      }
+      setToken(req, res, token);
+    } catch (e) {
+      console.log(e);
+    }
+    return next();
+  });
+
+  const setToken = (req, res, data) => {
+    const datastring = Buffer.from(JSON.stringify(data), "utf-8").toString(
+      "base64"
+    );
+    res.cookie("strava_token", datastring, {
+      maxAge: 10 * 365 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+    });
+    req.strava_token = data;
   };
 
-  const getActivity = async (activityId) => {
+  const getActivity = async (req, activityId) => {
     const schema = await getSchema();
     const rowService = new ItemsService(config.tableName, { schema });
     const filesService = new FilesService({ schema });
@@ -75,7 +97,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
       results?.[0]?.files?.[0]?.directus_files_id?.id || undefined;
 
     // Get Activity
-    let token = await getToken();
+    const token = req.strava_token;
     const data = await got(
       `https://www.strava.com/api/v3/activities/${activityId}`,
       { headers: { Authorization: `Bearer ${token.access_token}` } }
@@ -109,8 +131,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
 
   // Index page
   router.get("/", async (req, res, next) => {
-    const token = await getToken();
-
+    const token = req.strava_token;
     let subscriptionId = null;
     if (token) {
       const response = await request({
@@ -132,7 +153,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
 
   // List recent activities
   router.get("/list", async (req, res) => {
-    const token = await getToken();
+    const token = req.strava_token;
     const activities = await got(`https://www.strava.com/api/v3/activities`, {
       headers: { Authorization: `Bearer ${token.access_token}` },
     }).json();
@@ -143,7 +164,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
 
   // View json for a single activity
   router.get("/view/:id", async (req, res) => {
-    let token = await getToken();
+    let token = req.strava_token;
     const data = await got(
       `https://www.strava.com/api/v3/activities/${req.params.id}`,
       { headers: { Authorization: `Bearer ${token.access_token}` } }
@@ -153,7 +174,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
 
   // Trigger a fetch to directus db of one activity
   router.get("/fetch/:id", async (req, res) => {
-    await getActivity(req.params.id);
+    await getActivity(req, req.params.id);
     return res.redirect(`/custom/strava/list?updated=${req.params.id}`);
   });
 
@@ -174,7 +195,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
       objectType === "activity" &&
       ownerId === config.athlete_id
     ) {
-      getActivity(activityId);
+      getActivity(req, activityId);
     }
   });
 
@@ -251,7 +272,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
       return res.sendStatus(400);
     }
     console.log("Athlete authed");
-    setToken(response);
-    res.sendStatus(200);
+    setToken(req, res, response);
+    res.redirect("/custom/strava");
   });
 }
