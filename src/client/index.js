@@ -3,13 +3,14 @@ import getFull from "./full";
 import { Readable } from "stream";
 import nunjucks from "nunjucks";
 import cookieParser from "cookie-parser";
+import crypto from "crypto";
 
 import indexTemplate from "./views/index.njk";
 import listTemplate from "./views/list.njk";
 
 const config = require("./config.js");
 
-const extensionUrl = `${config.directusUrl}/${config.extensionPath}`;
+const extensionUrl = `${config.directusUrl}/${config.extensionName}`;
 const authUrl = `${extensionUrl}/auth`;
 const listUrl = `${extensionUrl}/list`;
 const webhookUrl = `${extensionUrl}/webhook-${config.webhookSecret}`;
@@ -27,6 +28,7 @@ const request = async (options) => {
 };
 
 export default function registerEndpoint(router, { services, getSchema }) {
+  let webhookVerifyToken;
   const { ItemsService, FilesService, AuthenticationService } = services;
 
   // WEBHOOKS
@@ -41,11 +43,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
     const activityId = body.object_id;
     console.log("Strava activity received: " + type + " " + activityId);
 
-    if (
-      (type === "create" || type === "update") &&
-      objectType === "activity" &&
-      ownerId === config.athleteId
-    ) {
+    if ((type === "create" || type === "update") && objectType === "activity") {
       getActivity(req, activityId);
     }
   });
@@ -57,7 +55,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
     let token = req.query["hub.verify_token"];
     let challenge = req.query["hub.challenge"];
     if (mode && token) {
-      if (mode === "subscribe" && token === config.webhookVerifyToken) {
+      if (mode === "subscribe" && token === webhookVerifyToken) {
         console.log("Responding OK to webhook challenge");
         return res.json({ "hub.challenge": challenge });
       } else {
@@ -126,7 +124,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
 
   const getActivity = async (req, activityId) => {
     const schema = await getSchema();
-    const rowService = new ItemsService(config.tableName, { schema });
+    const rowService = new ItemsService(config.collection, { schema });
     const filesService = new FilesService({ schema });
 
     // Look up existing activity
@@ -164,7 +162,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
     // Create or update activity
     const key = await rowService.upsertOne({
       id,
-      ...config.mapActivityToRow(data),
+      ...config.mapActivityToItem(data),
       files: newFileKey ? [{ directus_files_id: newFileKey }] : [],
       notes: notes,
     });
@@ -229,13 +227,14 @@ export default function registerEndpoint(router, { services, getSchema }) {
 
   // Initialise subscription query
   router.get("/subscription/create", async (req, res) => {
+    webhookVerifyToken = crypto.randomBytes(64).toString("utf-8");
     console.log(
       await request({
         url: `${config.authProxyUrl}/subscription`,
         method: "post",
         searchParams: {
           callback_url: webhookUrl,
-          verify_token: config.webhookVerifyToken,
+          verify_token: webhookVerifyToken,
         },
       })
     );
