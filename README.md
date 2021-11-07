@@ -17,6 +17,8 @@ The Strava webhooks only trigger if the title of an activity changes. If you wan
 
 ### Install
 
+⚠ Directus 9 is a moving target and subject to change and until it stabilized it is likely this extension will only work with a particular version of directus. This will be noted in the release notes.
+
 Install the extension by copying the release files to your directus extensions folder:
 
 - Copy `endpoint.js` to `<directus_root>/extensions/endpoints/strava/index.js`
