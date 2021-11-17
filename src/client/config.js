@@ -1,9 +1,9 @@
 module.exports = {
   // Auth
+  clientId: 123456,
+  clientSecret: "",
   athleteEmail: "", // Your strava account email - only required for retrieving "full" activities
   athletePassword: "", // Your strava account password - only required for retrieving "full" activities
-  authClientId: 68343, // Strava Application id - leave as default unless you are hosting your own server
-  authProxyUrl: " https://directus-strava.herokuapp.com", // Auth proxy url - leave as default unless you are hosting your own server
   webhookSecret: "", // A random secret to obfusticater the webhook url
   // Paths
   directusUrl: "", // The full url to your directus instance

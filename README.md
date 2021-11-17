@@ -17,14 +17,14 @@ The Strava webhooks only trigger if the title of an activity changes. If you wan
 
 ### Install
 
-⚠ Directus 9 is a moving target and subject to change and until it stabilized it is likely this extension will only work with a particular version of directus. This will be noted in the release notes.
+Compatible with Directus 9.0.x.
 
 Install the extension by copying the release files to your directus extensions folder:
 
 - Copy `endpoint.js` to `<directus_root>/extensions/endpoints/strava/index.js`
 - Copy `config.js` to `<directus_root>/extensions/endpoints/strava/config.js`
 
-Configure the extension by editing `config.js`. See below for config options. You must set `directusUrl` for authentication to work.
+Configure the extension by editing `config.js`. See below for config options. You must set `directusUrl` for authentication to work. You must create a strava oauth application and set the `clientId` and `clientSecret`.
 
 Then you can visit `<directus_url>/strava` where you can authenticate and start fetching activities.
 
@@ -34,6 +34,8 @@ Configuration is done in `config.js`. The options are:
 
 | Option              | Type     | Default                                   | Description                                                                     |
 | ------------------- | -------- | ----------------------------------------- | ------------------------------------------------------------------------------- |
+| `clientId`          | string   |                                           | Strava OAuth application client id                                              |
+| `clientSecret`      | string   |                                           | Strava OAuth application client secret                                          |
 | `directusUrl`       | string   |                                           | The full url to your directus instance                                          |
 | `webhookSecret`     | string   |                                           | A random secret to obfusticate the webhook url                                  |
 | `collection`        | string   | `"strava"`                                | The directus collection to insert strava data into                              |
@@ -43,29 +45,6 @@ Configuration is done in `config.js`. The options are:
 | `authProxyUrl`      | string   | `"https://directus-strava.herokuapp.com"` | Auth proxy url - leave as default unless you are hosting your own server        |
 | `athleteEmail`      | string   |                                           | Your strava account email - only required for retrieving "full" activities      |
 | `athletePassword`   | string   |                                           | Your strava account password - only required for retrieving "full" activities   |
-
-### Server
-
-By default the extension uses the Directus Strava heroku app as an authentication proxy server. This is a stateless app that stores no authentication information.
-
-If you would prefer to host your own authentication server then first set up a Strava applicaton on the [strava website](https://developers.strava.com/docs/).
-
-Then deploy the Heroku app:
-
-```
-heroku apps:create <name-for-your-heroku-app>
-
-heroku config:set CLIENT_ID=<your-apps-client-id>
-heroku config:set CLIENT_SECRET=<your-apps-client-secret>
-
-npm run deploy
-```
-
-Finally update the `authProxyUrl` in `config.js` to your heroku app:
-
-```
-authProxyUrl: "https://my-heroku-app.herokuapp.com"
-```
 
 ## Development
 
