@@ -9,10 +9,38 @@
             .green {
                 color: green;
             }
+            .title {
+                display: flex;
+                align-items: center;
+            }
+            .title span {
+                font-size: 2em;
+            }
+            @media (prefers-color-scheme: dark) {
+                body,
+                button,
+                html,
+                input,
+                select,
+                textarea {
+                    border-color: #827661;
+                    color: #fffddd;
+                    background-color: #1d1c19;
+                }
+                a:not(.button) {
+                    color: #7399be;
+                }
+                a:not(.button):visited {
+                    color: #f0f8ff;
+                }
+            }
         </style>
     </head>
     <body>
-        <h1>🚶‍♂️ Directus Strava Extension 🚴‍♀️</h1>
+        <div class="title">
+            <span>🚶‍♂️ </span>
+            <h1>Directus Strava Extension</h1>
+            <span> 🚴‍♀️</span></div>
         <p>
             <a href="{{ extensionUrl }}">Home</a>
         </p>
