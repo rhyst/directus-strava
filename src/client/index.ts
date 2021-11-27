@@ -5,6 +5,8 @@ import nunjucks from "nunjucks";
 import cookieParser from "cookie-parser";
 import crypto from "crypto";
 import { json } from "express";
+import fs from "fs";
+import path from "path";
 
 import indexTemplate from "./views/index.njk";
 import listTemplate from "./views/list.njk";
@@ -20,6 +22,7 @@ const authUrl = `${extensionUrl}/auth`;
 const listUrl = `${extensionUrl}/list`;
 const webhookUrl = `${extensionUrl}/webhook-${config.webhookSecret}`;
 const oauthUrl = `https://www.strava.com/oauth/authorize?client_id=${config.clientId}&response_type=code&redirect_uri=${authUrl}&approval_prompt=force&scope=activity:read_all`;
+const tokenJSONPath = path.join(__dirname, "strava.json");
 
 // Make a request and return the response
 const request = async (options) => {
@@ -35,7 +38,47 @@ const request = async (options) => {
 export default function registerEndpoint(router, { services, getSchema }) {
   let webhookVerifyToken;
   const { ItemsService, FilesService, AuthenticationService } = services;
+
+  router.use(cookieParser());
   router.use(json());
+
+  // STRAVA AUTHENTICATION
+  // check for all routes
+
+  const setToken = (req, data) => {
+    const tokenJSON = JSON.stringify(data);
+    fs.writeFileSync(tokenJSONPath, tokenJSON, { encoding: "utf-8" });
+    req.strava_token = data;
+  };
+
+  // Get strava token if it exists
+  router.use(async (req, res, next) => {
+    // Check and refresh strava token
+    if (!fs.existsSync(tokenJSONPath)) {
+      return next();
+    }
+    try {
+      const tokenJSON = fs.readFileSync(tokenJSONPath, { encoding: "utf-8" });
+      let token = JSON.parse(tokenJSON);
+      const time = Math.round(Date.now() / 1000);
+      if (token.expires_at - time <= 3600) {
+        token = await request({
+          url: `https://www.strava.com/oauth/token`,
+          method: "post",
+          json: {
+            client_id: config.clientId,
+            client_secret: config.clientSecret,
+            refresh_token: token.refresh_token,
+            grant_type: "refresh_token",
+          },
+        });
+      }
+      setToken(req, token);
+    } catch (e) {
+      console.log(e);
+    }
+    return next();
+  });
 
   // WEBHOOKS
 
@@ -45,7 +88,6 @@ export default function registerEndpoint(router, { services, getSchema }) {
     const body = req.body;
     const type = body.aspect_type;
     const objectType = body.object_type;
-    const ownerId = body.owner_id;
     const activityId = body.object_id;
     console.log("Strava activity received: " + type + " " + activityId);
 
@@ -71,16 +113,14 @@ export default function registerEndpoint(router, { services, getSchema }) {
     return res.sendStatus(400);
   });
 
-  // AUTH
-
-  router.use(cookieParser());
-
-  // Auth on Directus and Strava for each request
+  // Directus Auth
+  // Check for all routes other than webhook as the Strava API is not authed on our directus instance
   router.use(async (req, res, next) => {
     const schema = await getSchema();
-    // First check we are authed on directus
     if (!req.cookies.directus_refresh_token) {
-      return res.redirect(config.directusUrl + "/admin/login");
+      return res.redirect(
+        `${config.directusUrl}/admin/login?redirect=/${config.extensionUrl}`
+      );
     }
     const authService = new AuthenticationService({ schema });
     let auth;
@@ -92,48 +132,14 @@ export default function registerEndpoint(router, { services, getSchema }) {
       });
     } catch (e) {
       console.log(e);
-      return res.redirect(config.directusUrl + "/admin/login");
-    }
-    // Check and refresh strava token
-    if (!req.cookies.strava_token) {
-      return next();
-    }
-    try {
-      let token = JSON.parse(
-        Buffer.from(req.cookies.strava_token, "base64").toString("utf-8")
+      return res.redirect(
+        `${config.directusUrl}/admin/login?redirect=/${config.extensionUrl}`
       );
-      const time = Math.round(Date.now() / 1000);
-      if (token.expires_at - time <= 3600) {
-        token = await request({
-          url: `https://www.strava.com/oauth/token`,
-          method: "post",
-          json: {
-            client_id: config.clientId,
-            client_secret: config.clientSecret,
-            refresh_token: token.refresh_token,
-            grant_type: "refresh_token",
-          },
-        });
-      }
-      setToken(req, res, token);
-    } catch (e) {
-      console.log(e);
     }
     return next();
   });
 
-  const setToken = (req, res, data) => {
-    const datastring = Buffer.from(JSON.stringify(data), "utf-8").toString(
-      "base64"
-    );
-    res.cookie("strava_token", datastring, {
-      maxAge: 10 * 365 * 24 * 60 * 60 * 1000,
-      httpOnly: true,
-    });
-    req.strava_token = data;
-  };
-
-  const getActivity = async (req, activityId) => {
+  const getActivity = async (req, activityId, body = null) => {
     const schema = await getSchema();
     const rowService = new ItemsService(config.collection, { schema });
     const filesService = new FilesService({ schema });
@@ -148,11 +154,13 @@ export default function registerEndpoint(router, { services, getSchema }) {
       results?.[0]?.files?.[0]?.directus_files_id?.id || undefined;
 
     // Get Activity
-    const token = req.strava_token;
-    const data = (await got(
-      `https://www.strava.com/api/v3/activities/${activityId}`,
-      { headers: { Authorization: `Bearer ${token.access_token}` } }
-    ).json()) as StravaActivity;
+    if (!body) {
+      const token = req.strava_token;
+      const data = (await got(
+        `https://www.strava.com/api/v3/activities/${activityId}`,
+        { headers: { Authorization: `Bearer ${token.access_token}` } }
+      ).json()) as StravaActivity;
+    }
 
     // Get things not available in the API
     const { gpx, notes } = await getFull(activityId);
@@ -309,7 +317,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
       return res.sendStatus(400);
     }
     console.log("Athlete authed");
-    setToken(req, res, response);
+    setToken(req, response);
     res.redirect(extensionUrl);
   });
 }
