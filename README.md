@@ -32,19 +32,18 @@ Then you can visit `<directus_url>/strava` where you can authenticate and start 
 
 Configuration is done in `config.js`. The options are:
 
-| Option              | Type     | Default                                   | Description                                                                     |
-| ------------------- | -------- | ----------------------------------------- | ------------------------------------------------------------------------------- |
-| `clientId`          | string   |                                           | Strava OAuth application client id                                              |
-| `clientSecret`      | string   |                                           | Strava OAuth application client secret                                          |
-| `directusUrl`       | string   |                                           | The full url to your directus instance                                          |
-| `webhookSecret`     | string   |                                           | A random secret to obfusticate the webhook url                                  |
-| `collection`        | string   | `"strava"`                                | The directus collection to insert strava data into                              |
-| `mapActivityToItem` | function |                                           | A function that maps strava activity properties into a directus item            |
-| `extensionName`     | string   | `"strava"`                                | Extension name - should match the extension directory name                      |
-| `authClientId`      | number   | `68343`                                   | Strava Application id - leave as default unless you are hosting your own server |
-| `authProxyUrl`      | string   | `"https://directus-strava.herokuapp.com"` | Auth proxy url - leave as default unless you are hosting your own server        |
-| `athleteEmail`      | string   |                                           | Your strava account email - only required for retrieving "full" activities      |
-| `athletePassword`   | string   |                                           | Your strava account password - only required for retrieving "full" activities   |
+| Option              | Type     | Default    | Description                                                                   |
+| ------------------- | -------- | ---------- | ----------------------------------------------------------------------------- |
+| `clientId`          | string   |            | Strava OAuth application client id                                            |
+| `clientSecret`      | string   |            | Strava OAuth application client secret                                        |
+| `directusUrl`       | string   |            | The full url to your directus instance                                        |
+| `webhookSecret`     | string   |            | A random secret to obfusticate the webhook url                                |
+| `directusAuth`      | boolean  | `true`     | Ensure the user has a valid directus login cookie to see the extension        |
+| `collection`        | string   | `"strava"` | The directus collection to insert strava data into                            |
+| `mapActivityToItem` | function |            | A function that maps strava activity properties into a directus item          |
+| `extensionName`     | string   | `"strava"` | Extension name - should match the extension directory name                    |
+| `athleteEmail`      | string   |            | Your strava account email - only required for retrieving "full" activities    |
+| `athletePassword`   | string   |            | Your strava account password - only required for retrieving "full" activities |
 
 ## Development
 

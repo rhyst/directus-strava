@@ -5,6 +5,7 @@ module.exports = {
   athleteEmail: "", // Your strava account email - only required for retrieving "full" activities
   athletePassword: "", // Your strava account password - only required for retrieving "full" activities
   webhookSecret: "", // A random secret to obfusticater the webhook url
+  directusAuth: true, // Require users to have logged into directus to see the extension
   // Paths
   directusUrl: "", // The full url to your directus instance
   extensionName: "strava", // The extension name - should match the extension directory name

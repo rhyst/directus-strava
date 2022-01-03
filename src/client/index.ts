@@ -116,25 +116,27 @@ export default function registerEndpoint(router, { services, getSchema }) {
   // Directus Auth
   // Check for all routes other than webhook as the Strava API is not authed on our directus instance
   router.use(async (req, res, next) => {
-    const schema = await getSchema();
-    if (!req.cookies.directus_refresh_token) {
-      return res.redirect(
-        `${config.directusUrl}/admin/login?redirect=/${config.extensionUrl}`
-      );
-    }
-    const authService = new AuthenticationService({ schema });
-    let auth;
-    try {
-      auth = await authService.refresh(req.cookies.directus_refresh_token);
-      res.cookie("directus_refresh_token", auth.refreshToken, {
-        maxAge: auth.expires,
-        httpOnly: true,
-      });
-    } catch (e) {
-      console.log(e);
-      return res.redirect(
-        `${config.directusUrl}/admin/login?redirect=/${config.extensionUrl}`
-      );
+    if (config.directusAuth !== false) {
+      const schema = await getSchema();
+      if (!req.cookies.directus_refresh_token) {
+        return res.redirect(
+          `${config.directusUrl}/admin/login?redirect=/${config.extensionUrl}`
+        );
+      }
+      const authService = new AuthenticationService({ schema });
+      let auth;
+      try {
+        auth = await authService.refresh(req.cookies.directus_refresh_token);
+        res.cookie("directus_refresh_token", auth.refreshToken, {
+          maxAge: auth.expires,
+          httpOnly: true,
+        });
+      } catch (e) {
+        console.log(e);
+        return res.redirect(
+          `${config.directusUrl}/admin/login?redirect=/${config.extensionUrl}`
+        );
+      }
     }
     return next();
   });
