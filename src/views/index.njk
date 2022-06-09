@@ -58,21 +58,17 @@
         {% if token %}Rea{% else %}A{% endif %}uthenticate</a>
     </p>
     {% if token %}
-      <p>Subscribed {% if subscriptionId %}
-          <span class="green">✔</span>
-        {% else %}❌{% endif %} - 
-      {% if subscriptionId %}
-          <a  class="button" href="{{ extensionUrl }}/subscription/delete?id={{subscriptionId}}">Unsubscribe</a>
-        {% else %}
-          <a  class="button" href="{{ extensionUrl }}/subscription/create">Subscribe</a>
-        {% endif %}
-      </p>
-    {% endif %}
-    {% if token %}
       <h2>Activities</h2>
-      <p>
-        <a href="{{ extensionUrl }}/list">View recent activities</a>
-      </p>
+      {% for activity in activities %}
+          <p>{{ activity.start_date }}
+              <a href="{{ extensionUrl }}/view/{{ activity.id }}">{{activity.name}}</a>
+              <a href="{{ extensionUrl }}/fetch/{{ activity.id }}">Fetch</a>
+              {% if activity.id === updated %}
+                  <span class="green">✔️</span>{% endif %}
+          </div>
+      {% else %}
+          <p>No activities</p>
+      {% endfor %}
     {% endif %}
   </div>
 </body>

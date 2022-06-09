@@ -9,7 +9,6 @@ import fs from "fs";
 import path from "path";
 
 import indexTemplate from "./views/index.njk";
-import listTemplate from "./views/list.njk";
 
 type StravaActivity = {
   name: string;
@@ -19,7 +18,6 @@ const config = require("./config.js");
 
 const extensionUrl = `${config.directusUrl}/${config.extensionName}`;
 const authUrl = `${extensionUrl}/auth`;
-const listUrl = `${extensionUrl}/list`;
 const webhookUrl = `${extensionUrl}/webhook-${config.webhookSecret}`;
 const oauthUrl = `https://www.strava.com/oauth/authorize?client_id=${config.clientId}&response_type=code&redirect_uri=${authUrl}&approval_prompt=force&scope=activity:read_all`;
 const tokenJSONPath = path.join(__dirname, "strava.json");
@@ -193,44 +191,26 @@ export default function registerEndpoint(router, { services, getSchema }) {
   // Index page
   router.get("/", async (req, res) => {
     const token = req.strava_token;
-    let subscriptionId = null;
+    let activities = [];
+    let updated = null;
     if (token) {
-      const response = await request({
-        url: "https://www.strava.com/api/v3/push_subscriptions",
-        method: "get",
-        searchParams: {
-          client_id: config.clientId,
-          client_secret: config.clientSecret,
-        },
-      });
-      subscriptionId = response?.[0]?.id;
+      activities = await got(`https://www.strava.com/api/v3/activities`, {
+        headers: { Authorization: `Bearer ${token.access_token}` },
+      }).json();
+      updated = req.query.updated ? Number(req.query.updated) : null;
     }
 
     const html = nunjucks.renderString(indexTemplate, {
       extensionUrl,
       oauthUrl,
       token,
-      subscriptionId,
-    });
-    return res.send(html);
-  });
-
-  // ACTIVITIES
-
-  // List recent activities
-  router.get("/list", async (req, res) => {
-    const token = req.strava_token;
-    const activities = await got(`https://www.strava.com/api/v3/activities`, {
-      headers: { Authorization: `Bearer ${token.access_token}` },
-    }).json();
-    const updated = req.query.updated ? Number(req.query.updated) : null;
-    const html = nunjucks.renderString(listTemplate, {
-      extensionUrl,
       activities,
       updated,
     });
     return res.send(html);
   });
+
+  // ACTIVITIES
 
   // View json for a single activity
   router.get("/view/:id", async (req, res) => {
@@ -245,7 +225,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
   // Trigger a fetch to directus db of one activity
   router.get("/fetch/:id", async (req, res) => {
     await getActivity(req, req.params.id);
-    return res.redirect(`${listUrl}?updated=${req.params.id}`);
+    return res.redirect(`${extensionUrl}?updated=${req.params.id}`);
   });
 
   // SUBSCRIPTION

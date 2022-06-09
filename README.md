@@ -53,7 +53,7 @@ Install dependencies:
 npm install
 ```
 
-Build the extension and server files:
+Build the extension files:
 
 ```
 npm run build
