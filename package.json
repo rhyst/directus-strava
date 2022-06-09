@@ -1,6 +1,6 @@
 {
   "name": "directus-strava",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "A directus extension and strava app for backing up strava activities into a directus database",
   "main": "dist/index.js",
   "scripts": {

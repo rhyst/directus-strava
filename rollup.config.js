@@ -8,7 +8,7 @@ import typescript from "@rollup/plugin-typescript";
 
 export default [
   {
-    input: "src/client/index.ts",
+    input: "src/index.ts",
     output: {
       file: "dist/index.js",
       format: "cjs",
@@ -24,7 +24,7 @@ export default [
       commonjs(),
       json(),
       copy({
-        targets: [{ src: "src/client/config.js", dest: "dist" }],
+        targets: [{ src: "src/config.js", dest: "dist" }],
       }),
       string({
         include: "**/*.njk",
