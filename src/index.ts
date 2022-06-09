@@ -3,13 +3,11 @@ import getFull from "./full";
 import { Readable } from "stream";
 import nunjucks from "nunjucks";
 import cookieParser from "cookie-parser";
-import crypto from "crypto";
 import { json } from "express";
 import fs from "fs";
 import path from "path";
 
 import indexTemplate from "./views/index.njk";
-import listTemplate from "./views/list.njk";
 
 type StravaActivity = {
   name: string;
@@ -19,10 +17,22 @@ const config = require("./config.js");
 
 const extensionUrl = `${config.directusUrl}/${config.extensionName}`;
 const authUrl = `${extensionUrl}/auth`;
-const listUrl = `${extensionUrl}/list`;
-const webhookUrl = `${extensionUrl}/webhook-${config.webhookSecret}`;
 const oauthUrl = `https://www.strava.com/oauth/authorize?client_id=${config.clientId}&response_type=code&redirect_uri=${authUrl}&approval_prompt=force&scope=activity:read_all`;
 const tokenJSONPath = path.join(__dirname, "strava.json");
+
+const log = (text: string, object?: any, emoji: string = "📜") => {
+  const now = new Date();
+  console.log(
+    `${("0" + now.getHours()).slice(-2)}:${("0" + now.getMinutes()).slice(
+      -2
+    )}:${("0" + now.getSeconds()).slice(
+      -2
+    )} ${emoji} ${text[0].toUpperCase()}${text.slice(1)}`
+  );
+  if (object) {
+    console.log(object);
+  }
+};
 
 // Make a request and return the response
 const request = async (options) => {
@@ -36,7 +46,6 @@ const request = async (options) => {
 };
 
 export default function registerEndpoint(router, { services, getSchema }) {
-  let webhookVerifyToken;
   const { ItemsService, FilesService, AuthenticationService } = services;
 
   router.use(cookieParser());
@@ -78,39 +87,6 @@ export default function registerEndpoint(router, { services, getSchema }) {
       console.log(e);
     }
     return next();
-  });
-
-  // WEBHOOKS
-
-  // Respond to activity event
-  router.post(`/webhook-${config.webhookSecret}`, async (req, res) => {
-    res.status(200).send("EVENT_RECEIVED");
-    const body = req.body;
-    const type = body.aspect_type;
-    const objectType = body.object_type;
-    const activityId = body.object_id;
-    console.log("Strava activity received: " + type + " " + activityId);
-
-    if ((type === "create" || type === "update") && objectType === "activity") {
-      getActivity(req, activityId);
-    }
-  });
-
-  // Respond to webhook setup test
-  router.get(`/webhook-${config.webhookSecret}`, (req, res) => {
-    console.log("Webhook challenge recieved");
-    let mode = req.query["hub.mode"];
-    let token = req.query["hub.verify_token"];
-    let challenge = req.query["hub.challenge"];
-    if (mode && token) {
-      if (mode === "subscribe" && token === webhookVerifyToken) {
-        console.log("Responding OK to webhook challenge");
-        return res.json({ "hub.challenge": challenge });
-      } else {
-        return res.sendStatus(403);
-      }
-    }
-    return res.sendStatus(400);
   });
 
   // Directus Auth
@@ -187,50 +163,32 @@ export default function registerEndpoint(router, { services, getSchema }) {
       files: newFileKey ? [{ directus_files_id: newFileKey }] : [],
       notes: notes,
     });
-    console.log("Updated activity: " + key);
+    log("Updated activity: " + key);
   };
 
   // Index page
   router.get("/", async (req, res) => {
     const token = req.strava_token;
-    let subscriptionId = null;
+    let activities = [];
+    let updated = null;
     if (token) {
-      const response = await request({
-        url: "https://www.strava.com/api/v3/push_subscriptions",
-        method: "get",
-        searchParams: {
-          client_id: config.clientId,
-          client_secret: config.clientSecret,
-        },
-      });
-      subscriptionId = response?.[0]?.id;
+      activities = await got(`https://www.strava.com/api/v3/activities`, {
+        headers: { Authorization: `Bearer ${token.access_token}` },
+      }).json();
+      updated = req.query.updated ? Number(req.query.updated) : null;
     }
 
     const html = nunjucks.renderString(indexTemplate, {
       extensionUrl,
       oauthUrl,
       token,
-      subscriptionId,
-    });
-    return res.send(html);
-  });
-
-  // ACTIVITIES
-
-  // List recent activities
-  router.get("/list", async (req, res) => {
-    const token = req.strava_token;
-    const activities = await got(`https://www.strava.com/api/v3/activities`, {
-      headers: { Authorization: `Bearer ${token.access_token}` },
-    }).json();
-    const updated = req.query.updated ? Number(req.query.updated) : null;
-    const html = nunjucks.renderString(listTemplate, {
-      extensionUrl,
       activities,
       updated,
     });
     return res.send(html);
   });
+
+  // ACTIVITIES
 
   // View json for a single activity
   router.get("/view/:id", async (req, res) => {
@@ -245,57 +203,7 @@ export default function registerEndpoint(router, { services, getSchema }) {
   // Trigger a fetch to directus db of one activity
   router.get("/fetch/:id", async (req, res) => {
     await getActivity(req, req.params.id);
-    return res.redirect(`${listUrl}?updated=${req.params.id}`);
-  });
-
-  // SUBSCRIPTION
-
-  // Initialise subscription query
-  router.get("/subscription/create", async (req, res) => {
-    webhookVerifyToken = crypto.randomBytes(64).toString("utf-8");
-    console.log(
-      await request({
-        url: "https://www.strava.com/api/v3/push_subscriptions",
-        method: "post",
-        json: {
-          callback_url: webhookUrl,
-          verify_token: webhookVerifyToken,
-          client_id: config.clientId,
-          client_secret: config.clientSecret,
-        },
-      })
-    );
-    res.redirect(extensionUrl);
-  });
-
-  // View subscription
-  router.get("/subscription", async (req, res) => {
-    return res.json(
-      await request({
-        url: "https://www.strava.com/api/v3/push_subscriptions",
-        method: "get",
-        searchParams: {
-          client_id: config.clientId,
-          client_secret: config.clientSecret,
-        },
-      })
-    );
-  });
-
-  // Delete subscription
-  router.get("/subscription/delete", async (req, res) => {
-    const id = req.query.id;
-    console.log(
-      await request({
-        url: `https://www.strava.com/api/v3/push_subscriptions/${id}`,
-        method: "delete",
-        searchParams: {
-          client_id: config.clientId,
-          client_secret: config.clientSecret,
-        },
-      })
-    );
-    res.redirect(extensionUrl);
+    return res.redirect(`${extensionUrl}?updated=${req.params.id}`);
   });
 
   // Auth an athlete
@@ -315,10 +223,10 @@ export default function registerEndpoint(router, { services, getSchema }) {
       },
     });
     if (response.errors) {
-      console.log("Athlete auth failed");
+      log("Athlete auth failed");
       return res.sendStatus(400);
     }
-    console.log("Athlete authed");
+    log("Athlete authed");
     setToken(req, response);
     res.redirect(extensionUrl);
   });

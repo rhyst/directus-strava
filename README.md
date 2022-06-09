@@ -3,25 +3,22 @@
 A directus extension to enable automatic and easy manual backup of strava activities.
 
 - Authenticates using included Strava OAuth application
-- Retrieves activity data on manual trigger
-- Automatically retreive activity data on creation or update (and updates existing Directus items)
+- Retrieves activity data on manual trigger and creates or updates Directus items
 - Use full log in details to retrieve full activity data
 
 **Limitations**
 
 The Strava activity endpoint does not allow access to private notes or original GPX data. If you wish these to be retrieved then you can provide login details to get these from the Strava website (you can verify that these never leave the client extension).
 
-The Strava webhooks only trigger if the title of an activity changes. If you want other changes to be automatically then you must make a trivial change to the title to trigger the webhook. Alternatively use the list page in the extension to trigger retrieval of updated activities.
-
 ## Usage
 
 ### Install
 
-Compatible with Directus 9.0.x.
+Compatible with Directus 9.x.x.
 
 Install the extension by copying the release files to your directus extensions folder:
 
-- Copy `endpoint.js` to `<directus_root>/extensions/endpoints/strava/index.js`
+- Copy `index.js` to `<directus_root>/extensions/endpoints/strava/index.js`
 - Copy `config.js` to `<directus_root>/extensions/endpoints/strava/config.js`
 
 Configure the extension by editing `config.js`. See below for config options. You must set `directusUrl` for authentication to work. You must create a strava oauth application and set the `clientId` and `clientSecret`.
@@ -53,7 +50,7 @@ Install dependencies:
 npm install
 ```
 
-Build the extension and server files:
+Build the extension files:
 
 ```
 npm run build
