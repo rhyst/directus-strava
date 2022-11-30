@@ -8,7 +8,9 @@ const tokenRe = /.*csrf-token.*content="(.*)"/;
 
 const config = require("./config.js");
 
-export default async (activityId) => {
+export default async (
+  activityId: number
+): Promise<{ gpx: string | null; notes: string }> => {
   if (!config.athleteEmail || !config.athletePassword) {
     return { gpx: null, notes: "" };
   }

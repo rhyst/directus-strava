@@ -117,7 +117,7 @@ export default function registerEndpoint(router, { services, getSchema, database
     return next();
   });
 
-  const getActivity = async (req, activityId, body = null) => {
+  const getActivity = async (req, activityId) => {
     const schema = await getSchema();
     const rowService = new ItemsService(config.collection, { schema });
     const filesService = new FilesService({ schema });
@@ -138,13 +138,11 @@ export default function registerEndpoint(router, { services, getSchema, database
     const fileKey = hydratedResult?.files?.[0]?.directus_files_id?.id || undefined;
 
     // Get Activity
-    if (!body) {
-      const token = req.strava_token;
-      const data = (await got(
+    const token = req.strava_token;
+    const data = (await got(
         `https://www.strava.com/api/v3/activities/${activityId}`,
         { headers: { Authorization: `Bearer ${token.access_token}` } }
       ).json()) as StravaActivity;
-    }
 
     // Get things not available in the API
     const { gpx, notes } = await getFull(activityId);
