@@ -46,6 +46,7 @@ const request = async (options) => {
 };
 
 export default function registerEndpoint(router, { services, getSchema }) {
+export default function registerEndpoint(router, { services, getSchema, database }) {
   const { ItemsService, FilesService, AuthenticationService } = services;
 
   router.use(cookieParser());
@@ -123,13 +124,19 @@ export default function registerEndpoint(router, { services, getSchema }) {
     const filesService = new FilesService({ schema });
 
     // Look up existing activity
-    const results = await rowService.readByQuery({
-      filter: { data: { _contains: `"id":${activityId}` } },
-      fields: ["id", "files.directus_files_id.id"],
-    });
-    const id = results?.[0]?.id || null;
-    const fileKey =
-      results?.[0]?.files?.[0]?.directus_files_id?.id || undefined;
+    // TODO: fix once json filtering is readded to directus
+    // const results = await rowService.readByQuery({
+    //   filter: { data: { _contains: `"id":${activityId}` } },
+    //   fields: ["id", "files.directus_files_id.id"],
+    // });
+    // const id = results?.[0]?.id || null;
+    // const fileKey =
+    //  results?.[0]?.files?.[0]?.directus_files_id?.id || undefined;
+    const results = await database.raw(`select id, data from ${config.collection} where data like '%"id":${activityId}%';`)
+    const result = results.find(r => `${JSON.parse(r.data).id}` === `${activityId}`)
+    const id = result?.id || null;
+    const hydratedResult = id ? await rowService.readOne(id, { fields: ["files.directus_files_id.id"]}) : null;
+    const fileKey = hydratedResult?.files?.[0]?.directus_files_id?.id || undefined;
 
     // Get Activity
     if (!body) {
