@@ -45,7 +45,6 @@ const request = async (options) => {
   }
 };
 
-export default function registerEndpoint(router, { services, getSchema }) {
 export default function registerEndpoint(router, { services, getSchema, database }) {
   const { ItemsService, FilesService, AuthenticationService } = services;
 
@@ -157,6 +156,7 @@ export default function registerEndpoint(router, { services, getSchema, database
         {
           title: data.name,
           filename_download: `${activityId}.gpx`,
+          type: "application/gpx+xml",
           storage: "local",
         },
         fileKey
