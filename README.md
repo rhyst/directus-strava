@@ -14,7 +14,7 @@ The Strava activity endpoint does not allow access to private notes or original 
 
 ### Install
 
-Compatible with Directus 9.x.x.
+Compatible with Directus 10.x.x.
 
 Install the extension by copying the release files to your directus extensions folder:
 
@@ -54,4 +54,10 @@ Build the extension files:
 
 ```
 npm run build
+```
+
+Run an instance of Directus with the extension installed:
+
+```
+npm run start
 ```

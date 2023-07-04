@@ -9,6 +9,9 @@
       .green {
         color: green;
       }
+      .red {
+        color: red;
+      }
       .button {
         padding: 4px;
         font-size: 13px;
@@ -65,6 +68,8 @@
               <a href="{{ extensionUrl }}/fetch/{{ activity.id }}">Fetch</a>
               {% if activity.id === updated %}
                   <span class="green">✔️</span>{% endif %}
+              {% if activity.id === failed %}
+                  <span class="red">❌</span>{% endif %}
           </div>
       {% else %}
           <p>No activities</p>
