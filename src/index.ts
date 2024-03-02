@@ -205,9 +205,11 @@ export default defineEndpoint(
       let activities: Activity[] = [];
       let updated = null;
       let failed = null;
+      let page = req.query.page ? Number(req.query.page) : 1;
       if (token) {
         activities = (await got(`https://www.strava.com/api/v3/activities`, {
           headers: { Authorization: `Bearer ${token.access_token}` },
+          searchParams: { page },
         }).json()) as Activity[];
         updated = req.query.updated ? Number(req.query.updated) : null;
         failed = req.query.failed ? Number(req.query.failed) : null;
@@ -220,6 +222,7 @@ export default defineEndpoint(
         activities,
         updated,
         failed,
+        page
       });
       return res.send(html);
     });
@@ -242,10 +245,12 @@ export default defineEndpoint(
         req as unknown as StravaRequest,
         parseInt(req.params.id, 10)
       );
+      const referer = req.get("referer");
+      const page = referer ? new URL(referer).searchParams.get("page") : 1;
       if (success) {
-        return res.redirect(`${extensionUrl}?updated=${req.params.id}`);
+        return res.redirect(`${extensionUrl}?updated=${req.params.id}&page=${page}`);
       }
-      return res.redirect(`${extensionUrl}?failed=${req.params.id}`);
+      return res.redirect(`${extensionUrl}?failed=${req.params.id}&page=${page}`);
     });
 
     // Auth an athlete

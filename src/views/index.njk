@@ -18,6 +18,7 @@
         grid-auto-rows: minmax(21px, auto);
         grid-row-gap: 5px;
         grid-column-gap: 5px;
+        margin-bottom: 10px;
       }
       .activities > * {
         overflow: hidden;
@@ -89,6 +90,15 @@
       {% else %}
           <p>No activities</p>
       {% endfor %}
+      </div>
+      <div>
+        {% if page > 1 %}
+          <a href="?page={{ page - 1 }}">Previous Page</a>
+          &nbsp;
+        {% endif %}
+        {% if activities.length === 30 %}
+          <a href="?page={{ page + 1 }}">Next Page</a>
+        {% endif %}
       </div>
     {% endif %}
   </div>
