@@ -12,6 +12,17 @@
       .red {
         color: red;
       }
+      .activities {
+        grid-template-columns: minmax(100px, 180px) auto 60px 60px 60px;
+        display: inline-grid;
+        grid-auto-rows: minmax(21px, auto);
+        grid-row-gap: 5px;
+        grid-column-gap: 5px;
+      }
+      .activities > * {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
       .button {
         padding: 4px;
         font-size: 13px;
@@ -62,18 +73,23 @@
     </p>
     {% if token %}
       <h2>Activities</h2>
+      <div class="activities">
       {% for activity in activities %}
-          <p>{{ activity.start_date }}
-              <a href="{{ extensionUrl }}/view/{{ activity.id }}">{{activity.name}}</a>
-              <a href="{{ extensionUrl }}/fetch/{{ activity.id }}">Fetch</a>
-              {% if activity.id === updated %}
-                  <span class="green">✔️</span>{% endif %}
-              {% if activity.id === failed %}
-                  <span class="red">❌</span>{% endif %}
-          </div>
+        <span>{{ activity.start_date }}</span>
+        <a href="https://www.strava.com/activities/{{ activity.id }}">{{ activity.name }}</a>
+        <a href="{{ extensionUrl }}/fetch/{{ activity.id }}">Fetch</a>
+        <a href="{{ extensionUrl }}/view/{{ activity.id }}">(json)</a>
+        {% if activity.id === updated %}
+            <span class="green">✔️</span>
+        {% elif activity.id === failed %}
+            <span class="red">❌</span>
+        {% else %}
+            <span></span>
+        {% endif %}
       {% else %}
           <p>No activities</p>
       {% endfor %}
+      </div>
     {% endif %}
   </div>
 </body>

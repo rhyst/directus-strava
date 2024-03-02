@@ -18,6 +18,7 @@ export default async (
 
     console.log("Getting full activity");
 
+    console.log("Acquiring cookie from login page");
     const loginPage = (await got(
       "https://www.strava.com/login"
     )) as unknown as { body: string; headers: { "set-cookie": string[] } };
@@ -40,6 +41,7 @@ export default async (
         cookie && cookieJar.setCookieSync(cookie, "https://strava.com")
     );
 
+    console.log("Performing login request");
     const form = new FormData();
     form.append("email", config.athleteEmail);
     form.append("password", config.athletePassword);
@@ -72,6 +74,8 @@ export default async (
         cookie && cookieJar.setCookieSync(cookie, "https://strava.com")
     );
 
+    console.log("Perfoming GPX export request");
+
     let gpx: string | null =
       (
         await got(
@@ -84,6 +88,8 @@ export default async (
     if (gpx && gpx.includes("Sorry, this file can not be exported")) {
       gpx = null;
     }
+
+    console.log("Perfoming HTML page request");
 
     let html = await got(`https://www.strava.com/activities/${activityId}`, {
       cookieJar,
