@@ -1,0 +1,11 @@
+{
+	"name": "directus-extension-strava",
+	"version": "1.7.1",
+	"type": "module",
+	"directus:extension": {
+		"type": "endpoint",
+		"path": "index.js",
+        "source": "",
+		"host": "^10.0.0"
+	}
+}

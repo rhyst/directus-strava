@@ -34,8 +34,9 @@ const request = async (options: GotOptions): Promise<unknown> => {
   return null;
 };
 
-export default defineEndpoint(
-  async (router, { services, getSchema, database }) => {
+export default {
+  id: "strava",
+  handler: async (router, { services, getSchema, database }) => {
     const config = (await import(__dirname + "/config.js"))
       .default as unknown as Config;
 
@@ -222,7 +223,7 @@ export default defineEndpoint(
         activities,
         updated,
         failed,
-        page
+        page,
       });
       return res.send(html);
     });
@@ -248,9 +249,13 @@ export default defineEndpoint(
       const referer = req.get("referer");
       const page = referer ? new URL(referer).searchParams.get("page") : 1;
       if (success) {
-        return res.redirect(`${extensionUrl}?updated=${req.params.id}&page=${page}`);
+        return res.redirect(
+          `${extensionUrl}?updated=${req.params.id}&page=${page}`
+        );
       }
-      return res.redirect(`${extensionUrl}?failed=${req.params.id}&page=${page}`);
+      return res.redirect(
+        `${extensionUrl}?failed=${req.params.id}&page=${page}`
+      );
     });
 
     // Auth an athlete
@@ -277,5 +282,5 @@ export default defineEndpoint(
       setToken(req as unknown as StravaRequest, response);
       return res.redirect(extensionUrl);
     });
-  }
-);
+  },
+} as Parameters<typeof defineEndpoint>[0];

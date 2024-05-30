@@ -2,7 +2,7 @@
 	"name": "directus-extension-strava",
 	"description": "A directus extension and strava app for backing up strava activities into a directus database",
 	"icon": "extension",
-	"version": "1.7.0",
+	"version": "1.7.1",
 	"keywords": [
 		"directus",
 		"directus-extension",
@@ -22,10 +22,9 @@
 		"build-prod": "directus-extension build",
 		"link": "directus-extension link",
 		"start": "directus-extension build --no-minify && docker run --rm --name directus -p 8055:8055 -v $PWD/db:/directus/database -v $PWD/dist:/directus/extensions/endpoints/strava -e KEY=test -e SECRET=test -e ADMIN_EMAIL=admin@example.com -e ADMIN_PASSWORD=d1r3ctu5 directus/directus"
-
 	},
 	"devDependencies": {
-		"@directus/extensions-sdk": "10.1.5",
+		"@directus/extensions-sdk": "^11.0.6",
 		"@types/cookie-parser": "^1.4.3",
 		"@types/express": "^4.17.17",
 		"@types/node": "^20.3.3",
